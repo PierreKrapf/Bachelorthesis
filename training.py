@@ -5,7 +5,6 @@ import datetime
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-# from tqdm import tqdm
 from torchvision import transforms, datasets
 from net import Net
 from itertools import takewhile
@@ -18,7 +17,7 @@ PRINT_AFTER_X_BATCHES = 1
 
 
 class Training():
-    def __init__(self, lr=0.00001, momentum=0.9, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, weight_decay=0.0005):
+    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.sp_serial = sp_serial
@@ -65,7 +64,7 @@ class Training():
         self.testset = datasets.CIFAR10(
             os.path.join("drive", "My Drive", "data"), train=False, download=True, transform=self.transforms)
         self.testloader = torch.utils.data.DataLoader(
-            self.trainset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+            self.testset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
     def run(self, epochs=1):
         # TODO: Save and load epochs from savepoint

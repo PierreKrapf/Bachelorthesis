@@ -107,7 +107,5 @@ class Net(nn.Module):
         x = x.view(x.size()[0], -1)
         x = F.elu(self.dense1(x))
         x = self.dense2(x)
-        # print(x)
-        # x = F.softmax(x, dim=0)
 
         return x
