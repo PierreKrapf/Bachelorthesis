@@ -10,16 +10,17 @@ from tqdm import tqdm
 from net import Net
 from dataset import SimpleDataset
 from training import Training
-
-
-def run():
-    tr = Training(savepoint_dir=os.path.join(
-        "drive", "My Drive", "savepoints"))
-    tr.run(epochs=10)
+from args import ArgParser
+from helper import printNamespace
 
 
 def main():
-    run()
+    config = ArgParser().parse_args()
+    printNamespace(config)
+    config = config.__dict__
+    tr = Training(savepoint_dir=config["savepoint_dir"], lr=config["learning_rate"], momentum=config["momentum"],
+                  weight_decay=config["weight_decay"], no_cuda=config["no_cuda"], batch_size=config["batch_size"], print_per=config["print_per"])
+    tr.run(epochs=config["epochs"])
 
 
 if __name__ == "__main__":

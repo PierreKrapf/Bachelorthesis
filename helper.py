@@ -28,3 +28,9 @@ def whiteningMatrix(img):
     u = torch.Tensor(u)
     principal_components = torch.mm(torch.mm(u, d), u.t())
     return principal_components
+
+
+def printNamespace(namespace):
+    for key in namespace.__dict__:
+        if namespace.__dict__[key] is not None:
+            print(f"{key}, {namespace.__dict__[key]}")

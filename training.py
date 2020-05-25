@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 MAX_SAVEPOINTS = 10
 CLASSES = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-PRINT_AFTER_X_BATCHES = 1
 
 
 class Training():
-    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2):
+    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, print_per=2000):
+        self.print_per = print_per
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.sp_serial = sp_serial
@@ -113,9 +113,9 @@ class Training():
                     #     print(outputs)
                     #     exit()
                     running_loss += loss.item()
-                    if i % PRINT_AFTER_X_BATCHES == PRINT_AFTER_X_BATCHES-1:
+                    if i % self.print_per == self.print_per-1:
                         print('[%d, %5d] loss: %.3f' %
-                              (epoch + 1, i + 1, running_loss / PRINT_AFTER_X_BATCHES))
+                              (epoch + 1, i + 1, running_loss / self.print_per))
                         running_loss = 0.0
                 self._makeSavepoint()
             print("Finished training!")
@@ -189,6 +189,9 @@ class Training():
         with torch.no_grad():
             for data in self.testloader:
                 images, labels = data
+                if self.device == "cuda":
+                    inputs = inputs.cuda()
+                    targets = targets.cuda()
                 outputs = self.net(images)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
