@@ -108,10 +108,6 @@ class Training():
                     loss.backward()
                     self.optimizer.step()
 
-                    # if math.isnan(loss.item()):
-                    #     print(loss)
-                    #     print(outputs)
-                    #     exit()
                     running_loss += loss.item()
                     if i % self.print_per == self.print_per-1:
                         print('[%d, %5d] loss: %.3f' %
@@ -188,14 +184,14 @@ class Training():
         total = 0
         with torch.no_grad():
             for data in self.testloader:
-                images, labels = data
+                inputs, targets = data
                 if self.device == "cuda":
                     inputs = inputs.cuda()
                     targets = targets.cuda()
-                outputs = self.net(images)
+                outputs = self.net(inputs)
                 _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                total += targets.size(0)
+                correct += (predicted == targets).sum().item()
 
         print("Accuracy of the network on %d test images: %d %%" %
               (100 * correct / total))
