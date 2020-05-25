@@ -19,7 +19,7 @@ def main():
     printNamespace(config)
     config = config.__dict__
     tr = Training(savepoint_dir=config["savepoint_dir"], lr=config["learning_rate"], momentum=config["momentum"],
-                  weight_decay=config["weight_decay"], no_cuda=config["no_cuda"], batch_size=config["batch_size"], print_per=config["print_per"])
+                  weight_decay=config["weight_decay"], no_cuda=config["no_cuda"], batch_size=config["batch_size"], print_per=config["print_per"], eval_only=config["eval_only"])
     tr.run(epochs=config["epochs"])
 
 

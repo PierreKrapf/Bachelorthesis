@@ -74,3 +74,5 @@ class ArgParser(argparse.ArgumentParser):
                           default=os.path.join("./data", "savepoints"), type=Path(), help="Defines which directory savepoints are saved to!")
         self.add_argument("-e", dest="epochs", default=10,
                           type=IntRange(1, 100), help="Defines the number of epochs to run! Valid values: 1 to 100")
+        self.add_argument("--eval", dest="eval_only", default=False, const=True,
+                          nargs='?', help="If flag is set, only evaluation will be run!")

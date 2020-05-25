@@ -9,6 +9,7 @@ from torchvision import transforms, datasets
 from net import Net
 from itertools import takewhile
 import matplotlib.pyplot as plt
+from tqdm.notebook import tqdm
 
 MAX_SAVEPOINTS = 10
 CLASSES = ('plane', 'car', 'bird', 'cat',
@@ -16,12 +17,13 @@ CLASSES = ('plane', 'car', 'bird', 'cat',
 
 
 class Training():
-    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, print_per=2000):
+    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, print_per=2000, eval_only=False):
+        self.eval_only = eval_only
+        self.sp_serial = sp_serial
+        self.savepoint_dir = savepoint_dir
         self.print_per = print_per
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.sp_serial = sp_serial
-        self.savepoint_dir = savepoint_dir
         self.net = Net(classes=len(CLASSES))
         if (not no_cuda) and torch.cuda.is_available():
             self.net.cuda()
@@ -67,6 +69,8 @@ class Training():
             self.testset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
 
     def run(self, epochs=1):
+        if self.eval_only:
+            return self.evaluate()
         # TODO: Save and load epochs from savepoint
         while True:
             print("Starting training!")
@@ -77,7 +81,7 @@ class Training():
                 running_loss = 0.0
 
                 # for each batch
-                for i, data in enumerate(self.trainloader):
+                for i, data in tqdm(enumerate(self.trainloader)):
                     inputs, targets = data
 
                     if self.device == "cuda":
@@ -183,7 +187,7 @@ class Training():
         correct = 0
         total = 0
         with torch.no_grad():
-            for data in self.testloader:
+            for data in tqdm(self.testloader):
                 inputs, targets = data
                 if self.device == "cuda":
                     inputs = inputs.cuda()
@@ -194,4 +198,4 @@ class Training():
                 correct += (predicted == targets).sum().item()
 
         print("Accuracy of the network on %d test images: %d %%" %
-              (100 * correct / total))
+              (total, 100 * correct / total))
