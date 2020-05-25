@@ -9,7 +9,7 @@ from torchvision import transforms, datasets
 from net import Net
 from itertools import takewhile
 import matplotlib.pyplot as plt
-from tqdm.notebook import tqdm
+# from tqdm.notebook import tqdm
 
 MAX_SAVEPOINTS = 10
 CLASSES = ('plane', 'car', 'bird', 'cat',
@@ -81,7 +81,8 @@ class Training():
                 running_loss = 0.0
 
                 # for each batch
-                for i, data in tqdm(enumerate(self.trainloader)):
+                # for i, data in tqdm(enumerate(self.trainloader)):
+                for i, data in enumerate(self.trainloader):
                     inputs, targets = data
 
                     if self.device == "cuda":
@@ -187,7 +188,8 @@ class Training():
         correct = 0
         total = 0
         with torch.no_grad():
-            for data in tqdm(self.testloader):
+            for data in self.testloader:
+                # for data in tqdm(self.testloader):
                 inputs, targets = data
                 if self.device == "cuda":
                     inputs = inputs.cuda()
