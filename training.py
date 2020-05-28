@@ -66,7 +66,7 @@ class Training():
         self.testset = datasets.CIFAR10(
             os.path.join("drive", "My Drive", "data"), train=False, download=True, transform=self.transforms)
         self.testloader = torch.utils.data.DataLoader(
-            self.testset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
+            self.testset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
     def run(self, epochs=1):
         if self.eval_only:
@@ -187,6 +187,8 @@ class Training():
         self.net.eval()
         correct = 0
         total = 0
+        correct_class = [0 for _ in range(len(CLASSES))]
+        total_class = [0 for _ in range(len(CLASSES))]
         with torch.no_grad():
             for data in self.testloader:
                 # for data in tqdm(self.testloader):
@@ -197,7 +199,15 @@ class Training():
                 outputs = self.net(inputs)
                 _, predicted = torch.max(outputs.data, 1)
                 total += targets.size(0)
+                for i, t in enumerate(targets):
+                    total_class[t] += 1
+                    if predicted[i] == t:
+                        correct_class[t] += 1
                 correct += (predicted == targets).sum().item()
 
-        print("Accuracy of the network on %d test images: %d %%" %
-              (total, 100 * correct / total))
+        print("Accuracy of the network on %d test images: %d %%  -  %d / %d" %
+              (total, 100 * correct / total, correct, total))
+        for i, c in enumerate(correct_class):
+            t = total_class[i]
+            print("Accuracy of class %s is %d %%  -   %d/%d" %
+                  (CLASSES[i], c / t * 100, c, t))
