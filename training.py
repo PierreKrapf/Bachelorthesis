@@ -41,8 +41,8 @@ class Training:
         self.criterion = torch.nn.CrossEntropyLoss()
 
         whiten_matrix = torch.load(os.path.join(
-            "Drive", "My Drive", "zca_matrix.pt"))
-        mean_vector = torch.load(os.path.join("Drive", "My Drive", "mean.pt"))
+            "drive", "My Drive", "zca_matrix.pt"))
+        mean_vector = torch.load(os.path.join("drive", "My Drive", "mean.pt"))
 
         self.transforms = transforms.Compose([
             transforms.Grayscale(1),
