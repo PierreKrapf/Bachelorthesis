@@ -16,7 +16,7 @@ CLASSES = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 
-class Training():
+class Training:
     def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, print_per=2000, eval_only=False):
         self.eval_only = eval_only
         self.sp_serial = sp_serial
@@ -40,12 +40,17 @@ class Training():
             self.net.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
         self.criterion = torch.nn.CrossEntropyLoss()
 
+        whiten_matrix = torch.load(os.path.join(
+            "Drive", "My Drive", "zca_matrix.pt"))
+        mean_vector = torch.load(os.path.join("Drive", "My Drive", "mean.pt"))
+
         self.transforms = transforms.Compose([
             transforms.Grayscale(1),
             transforms.RandomAffine(0, translate=(.1, .1)),
             transforms.ToTensor(),
             transforms.Normalize((0,), (1,)),
-            # TODO: ZCA whitening with: transforms.LinearTransformation()
+            transforms.LinearTransformation(
+                transformation_matrix=whiten_matrix, mean_vector=mean_vector)
         ])
 
         # load savepoints if available
@@ -71,7 +76,6 @@ class Training():
     def run(self, epochs=1):
         if self.eval_only:
             return self.evaluate()
-        # TODO: Save and load epochs from savepoint
         while True:
             print("Starting training!")
             self.net.train()

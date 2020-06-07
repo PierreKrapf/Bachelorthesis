@@ -1,7 +1,9 @@
 data
+drive
 net.ipynb
 */**/data.csv
 */**/__pycache__
 __pycache__
 todo.md
 .prettierignore
+.idea
