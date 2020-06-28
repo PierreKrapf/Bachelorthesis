@@ -9,7 +9,6 @@ from torchvision import transforms, datasets
 from net import Net
 from itertools import takewhile
 import matplotlib.pyplot as plt
-from whitening import Whitening
 from random import randint
 from config import Config
 from torchvision.datasets import ImageFolder
@@ -21,7 +20,7 @@ class Training:
         self.prep_dir = prep_dir
         self.savepoint_dir = savepoint_dir
         self.no_save_prep = no_save_prep
-        self.no_save_savepoint = no_save_savepoint
+        self.no_save_savepoints = no_save_savepoints
         self.sp_serial = sp_serial
         self.learning_rate = learning_rate
         self.momentum = momentum
@@ -121,7 +120,7 @@ class Training:
                 running_loss += loss.item()
                 if print_per_batches != None and i % print_per_batches == print_per_batches-1:
                     print('[%d, %5d] loss: %.3f' %
-                          (epoch + 1, i + 1, running_loss / self.print_per))
+                          (self.epoch, i + 1, running_loss / print_per_batches))
                     running_loss = 0.0
             self.current_loss = running_loss
             self._makeSavepoint()
@@ -154,7 +153,7 @@ class Training:
         self.net.eval()
 
     def _makeSavepoint(self):
-        if self.no_save_savepoint:
+        if self.no_save_savepoints:
             return
         if not os.path.isdir(self.savepoint_dir):
             os.mkdir(self.savepoint_dir)

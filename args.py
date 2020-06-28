@@ -81,7 +81,7 @@ class ArgParser(argparse.ArgumentParser):
                           nargs='?', help="If flag is set, only evaluation will be run! If both --train and --evaluate are omitted both are assumed to be true.")
 
         # logging
-        self.add_argument("-pp", dest="print_after_batch", nargs="+", default=DEFAULTS["PRINT_AFTER_BATCH"],
+        self.add_argument("-pp", dest="print_after_batch", nargs="?", default=DEFAULTS["PRINT_AFTER_BATCH"],
                           type=IntRange(0, math.inf),  help="Print lost after x batches!")
 
         # saving & loading
