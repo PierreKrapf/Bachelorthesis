@@ -21,7 +21,7 @@ class Training:
         self.prep_dir = prep_dir
         self.savepoint_dir = savepoint_dir
         self.no_save_prep = no_save_prep
-        self.no_save_savepoint = no_save_savepoints
+        self.no_save_savepoint = no_save_savepoint
         self.sp_serial = sp_serial
         self.learning_rate = learning_rate
         self.momentum = momentum
