@@ -9,22 +9,48 @@ from torchvision import transforms, datasets
 from net import Net
 from itertools import takewhile
 import matplotlib.pyplot as plt
-# from tqdm.notebook import tqdm
-
-MAX_SAVEPOINTS = 10
-CLASSES = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+from whitening import Whitening
+from random import randint
+from config import Config
+from torchvision.datasets import ImageFolder
+from helper import calcMeanStdWhitenMatrixMeanVec
 
 
 class Training:
-    def __init__(self, lr=0.0001, momentum=0.0, weight_decay=0.0, savepoint_dir="savepoints", sp_serial=-1, no_cuda=False, batch_size=10, num_workers=2, print_per=2000, eval_only=False):
-        self.eval_only = eval_only
-        self.sp_serial = sp_serial
+    def __init__(self, learning_rate=0.1, momentum=0.0, weight_decay=0.0, data_dir="data", savepoint_dir="savepoints", no_cuda=False, prep_dir="cache", batch_size=20, max_savepoints=20, num_workers=2,  sp_serial=-1, no_save_savepoints=False, no_save_prep=False):
+        self.prep_dir = prep_dir
         self.savepoint_dir = savepoint_dir
-        self.print_per = print_per
+        self.no_save_prep = no_save_prep
+        self.no_save_savepoint = no_save_savepoints
+        self.sp_serial = sp_serial
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.weight_decay = weight_decay
         self.batch_size = batch_size
+        self.max_savepoints = max_savepoints
         self.num_workers = num_workers
-        self.net = Net(classes=len(CLASSES))
+        self.data_dir = data_dir
+        self.dataset = ImageFolder(root=self.data_dir)
+        # sample_idx = 5000
+        # plt.imshow(self.dataset[sample_idx][0])
+        plt.show()
+        mean, std, whiten_matrix, mean_vec = self._loadOrCalcTransformValues()
+        self.transforms = transforms.Compose([
+            transforms.Grayscale(1),
+            transforms.RandomAffine(0, translate=(.1, .1)),
+            transforms.ToTensor(),
+            transforms.Normalize((mean,), (std,)),
+            transforms.LinearTransformation(whiten_matrix, mean_vec)
+        ])
+        self.dataset.transform = self.transforms
+        # (img, label) = self.dataset[sample_idx]
+        # label = self.dataset.classes[label]
+        # plt.title(label)
+        # plt.imshow(transforms.functional.to_pil_image(img*130), "gray")
+        # plt.show()
+        # exit()
+        self.net = Net(num_classes=len(self.dataset.classes))
+
         if (not no_cuda) and torch.cuda.is_available():
             self.net.cuda()
             self.device = "cuda"
@@ -36,22 +62,9 @@ class Training:
         # TODO: dynamic learning rate
 
         # Define optimizer AFTER device is set
-        self.optimizer = optim.RMSprop(
-            self.net.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+        self.optimizer = optim.RMSprop(self.net.parameters(
+        ), lr=self.learning_rate, momentum=self.momentum, weight_decay=self.weight_decay)
         self.criterion = torch.nn.CrossEntropyLoss()
-
-        whiten_matrix = torch.load(os.path.join(
-            "drive", "My Drive", "zca_matrix.pt"))
-        mean_vector = torch.load(os.path.join("drive", "My Drive", "mean.pt"))
-
-        self.transforms = transforms.Compose([
-            transforms.Grayscale(1),
-            transforms.RandomAffine(0, translate=(.1, .1)),
-            transforms.ToTensor(),
-            transforms.Normalize((0,), (1,)),
-            transforms.LinearTransformation(
-                transformation_matrix=whiten_matrix, mean_vector=mean_vector)
-        ])
 
         # load savepoints if available
         savepoints = os.listdir(self.savepoint_dir) if os.path.isdir(
@@ -59,71 +72,61 @@ class Training:
         if not savepoints == []:
             self._loadSavepoint(savepoints)
         else:
+            self.epoch = 0
+            self.current_loss = None
             print("No savepoints found!")
 
-        # TODO: Use actual dataset
-        # Using CIFAR10 to test
-        self.trainset = datasets.CIFAR10(
-            os.path.join("drive", "My Drive", "data"), train=True, download=True, transform=self.transforms)
         self.trainloader = torch.utils.data.DataLoader(
-            self.trainset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
-
-        self.testset = datasets.CIFAR10(
-            os.path.join("drive", "My Drive", "data"), train=False, download=True, transform=self.transforms)
+            self.dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
         self.testloader = torch.utils.data.DataLoader(
-            self.testset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
+            self.dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
 
-    def run(self, epochs=1):
-        if self.eval_only:
-            return self.evaluate()
-        while True:
-            print("Starting training!")
-            self.net.train()
-            # for each epoch
-            for epoch in range(epochs):
-                print(f"Epoch {epoch+1} of {epochs}:")
-                running_loss = 0.0
+    def train(self, epochs=1, evaluate=True, print_per_batches=None):
+        print("Starting training!")
+        self.net.train()
 
-                # for each batch
-                # for i, data in tqdm(enumerate(self.trainloader)):
-                for i, data in enumerate(self.trainloader):
-                    inputs, targets = data
+        target_epoch = epochs+self.epoch
+        # for each epoch
+        while self.epoch <= target_epoch:
+            self.epoch += 1
+            print(f"Epoch: {self.epoch} / {target_epoch}.")
+            running_loss = 0.0
 
-                    if self.device == "cuda":
-                        inputs = inputs.cuda()
-                        targets = targets.cuda()
-                    # Show first image for testing transforms
-                    # for index, i in enumerate(inputs):
-                    #     img = i.numpy()[0]
-                    #     plt.imshow(img, cmap="gray")
-                    #     plt.title(CLASSES[labels[index]])
-                    #     plt.show()
-                    # exit()
+            # for each batch
+            for i, data in enumerate(self.trainloader):
+                inputs, targets = data
 
-                    # run batch through net and calculate loss
-                    outputs = self.net(inputs)
-                    loss = self.criterion(outputs, targets)
+                if self.device == "cuda":
+                    inputs = inputs.cuda()
+                    targets = targets.cuda()
 
-                    if math.isnan(loss.item()):
-                        print(" ############# Loss is NaN #############")
-                        print("Outputs: ")
-                        print(outputs)
-                        print("Loss: ")
-                        print(loss)
-                        exit(-1)
+                # run batch through net and calculate loss
+                outputs = self.net(inputs)
+                loss = self.criterion(outputs, targets)
 
-                    # Backpropagation
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
+                # FOR DEBUGGING
+                if math.isnan(loss.item()):
+                    print(" ############# Loss is NaN #############")
+                    print("Outputs: ")
+                    print(outputs)
+                    print("Loss: ")
+                    print(loss)
+                    exit(-1)
 
-                    running_loss += loss.item()
-                    if i % self.print_per == self.print_per-1:
-                        print('[%d, %5d] loss: %.3f' %
-                              (epoch + 1, i + 1, running_loss / self.print_per))
-                        running_loss = 0.0
-                self._makeSavepoint()
-            print("Finished training!")
+                # Backpropagation
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                running_loss += loss.item()
+                if print_per_batches != None and i % print_per_batches == print_per_batches-1:
+                    print('[%d, %5d] loss: %.3f' %
+                          (epoch + 1, i + 1, running_loss / self.print_per))
+                    running_loss = 0.0
+            self.current_loss = running_loss
+            self._makeSavepoint()
+        print("Finished training!")
+        if evaluate:
             self.evaluate()
 
     def _loadSavepoint(self, savepoints):
@@ -143,17 +146,27 @@ class Training:
             self.sp_serial, target_file = ser_files[-1]
 
         print(f"Loading progress from {target_file}!")
-        self.net.load_state_dict(torch.load(
-            os.path.join(self.savepoint_dir, target_file)))
+        checkpoint = torch.load(os.path.join(self.savepoint_dir, target_file))
+        self.net.load_state_dict(checkpoint["net_state_dict"])
+        self.optimizer.load_tate_dict(checkpoint["optimizer_state_dict"])
+        self.epoch = checkpoint["epoch"]
+        self.current_loss = checkpoint["current_loss"]
         self.net.eval()
 
     def _makeSavepoint(self):
+        if self.no_save_savepoint:
+            return
         if not os.path.isdir(self.savepoint_dir):
             os.mkdir(self.savepoint_dir)
         target_path = os.path.join(
             self.savepoint_dir, self._getNextSavepointPath())
         print(f"Saving progress in {target_path}!")
-        torch.save(self.net.state_dict(), target_path)
+        torch.save({
+            "net_state_dict": self.net.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "epoch": self.epoch,
+            "current_loss": self.current_loss
+        }, target_path)
         self._removeOldSavepoints()
 
     def _getSavepointList(self):
@@ -180,7 +193,7 @@ class Training:
     def _removeOldSavepoints(self):
         files = self._getSavepointList()
         # files :: [(sn :: Int, path :: String)] sorted
-        while len(files) > MAX_SAVEPOINTS:
+        while len(files) > self.max_savepoints:
             t = files[0][1]
             os.remove(os.path.join(self.savepoint_dir, t))
             print(
@@ -191,8 +204,9 @@ class Training:
         self.net.eval()
         correct = 0
         total = 0
-        correct_class = [0 for _ in range(len(CLASSES))]
-        total_class = [0 for _ in range(len(CLASSES))]
+        l = len(self.dataset)
+        correct_class = [0 for _ in range(l)]
+        total_class = [0 for _ in range(l)]
         with torch.no_grad():
             for data in self.testloader:
                 # for data in tqdm(self.testloader):
@@ -214,4 +228,22 @@ class Training:
         for i, c in enumerate(correct_class):
             t = total_class[i]
             print("Accuracy of class %s is %d %%  -   %d/%d" %
-                  (CLASSES[i], c / t * 100, c, t))
+                  (self.dataset.classes[i], c / t * 100, c, t))
+
+    def _loadOrCalcTransformValues(self):
+        filepath = os.path.join(self.data_dir, "prep.pt")
+        if os.path.isfile(filepath):
+            tf_val_dict = torch.load(filepath)
+            return tf_val_dict["mean"], tf_val_dict["std"], tf_val_dict["whiten_matrix"], tf_val_dict["mean_vector"]
+        else:
+            mean, std, whiten_matrix, mean_vector = calcMeanStdWhitenMatrixMeanVec(
+                self.dataset)
+            if not self.no_save_prep:
+                torch.save({
+                    "mean": mean,
+                    "std": std,
+                    "whiten_matrix": whiten_matrix,
+                    "mean_vector": mean_vector
+                }, filepath)
+                print(f"Saved prep values to {filepath}")
+            return mean, std, whiten_matrix, mean_vector

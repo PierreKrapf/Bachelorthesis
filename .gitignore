@@ -8,3 +8,5 @@ todo.md
 .prettierignore
 .idea
 *.ipynb
+tools
+old
