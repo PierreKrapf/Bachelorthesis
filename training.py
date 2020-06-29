@@ -13,6 +13,8 @@ from random import randint
 from config import Config
 from torchvision.datasets import ImageFolder
 from helper import calcMeanStdWhitenMatrixMeanVec
+from rescale import Rescale
+import random
 
 
 class Training:
@@ -30,22 +32,23 @@ class Training:
         self.num_workers = num_workers
         self.data_dir = data_dir
         self.dataset = ImageFolder(root=self.data_dir)
-        # sample_idx = 5000
+        # sample_idx = random.randint(0, len(self.dataset))
         # plt.imshow(self.dataset[sample_idx][0])
-        plt.show()
+        # plt.show()
         mean, std, whiten_matrix, mean_vec = self._loadOrCalcTransformValues()
         self.transforms = transforms.Compose([
             transforms.Grayscale(1),
             transforms.RandomAffine(0, translate=(.1, .1)),
             transforms.ToTensor(),
             transforms.Normalize((mean,), (std,)),
-            transforms.LinearTransformation(whiten_matrix, mean_vec)
+            transforms.LinearTransformation(whiten_matrix, mean_vec),
+            Rescale(0.0, 1.0)
         ])
         self.dataset.transform = self.transforms
         # (img, label) = self.dataset[sample_idx]
         # label = self.dataset.classes[label]
         # plt.title(label)
-        # plt.imshow(transforms.functional.to_pil_image(img*130), "gray")
+        # plt.imshow(transforms.functional.to_pil_image(img), cmap="gray")
         # plt.show()
         # exit()
         self.net = Net(num_classes=len(self.dataset.classes))
@@ -122,6 +125,8 @@ class Training:
                     print('[%d, %5d] loss: %.3f' %
                           (self.epoch, i + 1, running_loss / print_per_batches))
                     running_loss = 0.0
+
+            # TODO: Redo loss / analytics saving
             self.current_loss = running_loss
             self._makeSavepoint()
         print("Finished training!")
@@ -147,7 +152,7 @@ class Training:
         print(f"Loading progress from {target_file}!")
         checkpoint = torch.load(os.path.join(self.savepoint_dir, target_file))
         self.net.load_state_dict(checkpoint["net_state_dict"])
-        self.optimizer.load_tate_dict(checkpoint["optimizer_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.epoch = checkpoint["epoch"]
         self.current_loss = checkpoint["current_loss"]
         self.net.eval()
@@ -166,6 +171,7 @@ class Training:
             "epoch": self.epoch,
             "current_loss": self.current_loss
         }, target_path)
+        # TODO: Add savepoint validation
         self._removeOldSavepoints()
 
     def _getSavepointList(self):

@@ -10,3 +10,6 @@ todo.md
 *.ipynb
 tools
 old
+*.pt
+*.pth
+savepoints

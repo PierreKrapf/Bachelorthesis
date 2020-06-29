@@ -94,6 +94,7 @@ def calcMeanStdWhitenMatrixMeanVec(dataset: Dataset, transform=None):
     return (mean, std, whiten_matrix, mean_vec)
 
 
+# FOR DEBUGGING
 if __name__ == "__main__":
     from torchvision.datasets import ImageFolder
     ds = ImageFolder("data/rico")
