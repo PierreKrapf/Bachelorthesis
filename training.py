@@ -18,9 +18,10 @@ import random
 
 
 class Training:
-    def __init__(self, learning_rate=0.1, momentum=0.0, weight_decay=0.0, data_dir="data", savepoint_dir="savepoints", no_cuda=False, prep_dir="cache", batch_size=20, max_savepoints=20, num_workers=2,  sp_serial=-1, no_save_savepoints=False, no_save_prep=False):
+    def __init__(self, learning_rate=0.1, momentum=0.0, weight_decay=0.0, data_dir="data", savepoint_dir="savepoints", no_cuda=False, prep_dir="cache", batch_size=20, max_savepoints=20, num_workers=2,  sp_serial=-1, no_save_savepoints=False, no_save_prep=False, save_after_batches=1000):
         self.prep_dir = prep_dir
         self.savepoint_dir = savepoint_dir
+        self.save_after_batches = save_after_batches
         self.no_save_prep = no_save_prep
         self.no_save_savepoints = no_save_savepoints
         self.sp_serial = sp_serial
@@ -121,6 +122,9 @@ class Training:
                 self.optimizer.step()
 
                 running_loss += loss.item()
+                if i % self.save_after_batches == 0:
+                    self.current_loss = running_loss
+                    self._makeSavepoint()
                 if print_per_batches != None and i % print_per_batches == print_per_batches-1:
                     print('[%d, %5d] loss: %.3f' %
                           (self.epoch, i + 1, running_loss / print_per_batches))
